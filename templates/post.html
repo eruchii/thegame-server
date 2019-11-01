@@ -1,0 +1,54 @@
+{% extends "layout.html" %}
+{% block title %}Meow{% endblock %}
+{% block body %}
+<nav id="nav-contain" class="navbar navbar-expand-lg navbar-light bg-light">
+  <div id="nav-bar" class="collapse navbar-collapse" id="navbarSupportedContent">
+    <ul class="navbar-nav mr-auto">
+      <li class="nav-item">
+        <a class="nav-link" href="/">Home</a>
+      </li>
+      <li class="nav-item ml-auto">
+        <a class="nav-link" href="/"><i id="logo" class="fas fa-cat"></i></a>
+      </li>
+      <li class="nav-item dropdown ml-auto">
+        <a id="profile" class="nav-link dropdown-toggle" href="#" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><i class="far fa-user-circle"></i></a>
+        <div class="dropdown-menu" aria-labelledby="profile">
+          <a class="dropdown-item" href="/logout">Logout</a>
+        </div>
+      </li>
+    </ul>
+  </div>
+</nav>
+<div id="neko-body" class="container-fluid">
+  <div class="row">
+    <div class="col-sm-3">
+    </div>
+    <div class="col-sm-6">
+      <div class="neko-card">
+        <div class="submission">
+          <div class="container-fluid submission-container">
+            <div class="submission-row row">
+              <div class="col-sm-1">
+                <div class="submission-profile"><i class="fas fa-user"></i></div>
+              </div>
+              <div class="submission-col col-sm-11">
+                <textarea id="submit-text" placeholder="meow meow meow meow?" name="submission-text" class="submission-text" form="submit-form"></textarea>
+              </div>
+            </div>
+          </div>
+          <form id="submit-form" action="{{ url_for('sendSaveFile', token = token) }}" method="post">
+            <button type="submit" class="meow btn submission-button">Meow</button>
+          </form>
+          <p class="error">{{ error }}</p>
+        </div>
+      </div>
+    </div>
+    <div class="col-sm-3">
+    </div>
+  </div>
+
+{% endblock %}
+
+{% block script %}
+<script src="/static/index.js"></script>
+{% endblock %}
