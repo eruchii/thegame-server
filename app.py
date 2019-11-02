@@ -14,6 +14,7 @@ import os
 import hashlib
 from db import get_session, user_exists, add_user, get_token, find_token, check_user
 import json
+import base64
 
 app = Flask(__name__)
 
@@ -44,7 +45,8 @@ def listfile():
 	token = request.args.get("token")
 	found, username = find_token(session, token)
 	lst = os.listdir(app.static_folder+"\\"+username)
-	return render_template("listfile.html", data = lst, token = token)
+	# return render_template("listfile.html", data = lst, token = token)
+	return jsonify(username = username, list = lst)
 
 @app.route("/bye")
 def bye():
@@ -64,7 +66,7 @@ def getSaveFile():
 	filename = username +"//"+id
 	with open(app.static_folder+'//'+filename,"r") as f:
 		data = f.read()
-		return jsonify(data = data)
+		return jsonify(username = username, id = id, data = data)
 	# return send_from_directory(app.static_folder,filename, as_attachment = True, attachment_filename = "save_"+id)
 
 @app.route("/sendsavefile", methods=["POST", "GET"])
@@ -87,6 +89,40 @@ def sendSaveFile():
 			f.write(file)
 		return render_template("post.html",token = token, error = "Done")
 	return render_template("post.html",token = request.args.get("token"))
+
+@app.route("/parse")
+@verify_token
+def parse():
+	token = request.args.get("token")
+	found, username = find_token(session, token)
+
+	id = request.args.get("id")
+	if(not id):
+		lst = os.listdir(app.static_folder+"//"+username)
+		id = lst[-1]
+	filename = username +"//"+id
+	savefile = {}
+	savefile["Money"] = 0
+	savefile["TargetHP"] = 0
+	savefile["tower"] = []
+	with open(app.static_folder+'//'+filename,"r") as f:
+		decoded_file = base64.b64decode(f.readline().encode())
+		file = decoded_file.decode().split("\n")
+		n = int(file[0])
+		for i in range(1, n):
+			line = file[i]
+			data = line.split(" ")
+			index = data[0]
+			if(index == "Money" or index == "TargetHP"):
+				value = int(data[1])
+				savefile[index] = value
+			else:
+				x = float(data[1])
+				y = float(data[2])
+				savefile["tower"].append((index, x, y))
+	return jsonify(savefile)
+
+
 
 @app.route("/login", methods = ["POST", "GET"])
 def login():
@@ -120,6 +156,8 @@ def register():
 def run_server():
 	app.jinja_env.auto_reload = True
 	app.config['TEMPLATES_AUTO_RELOAD'] = True
+	app.config['JSONIFY_PRETTYPRINT_REGULAR'] = True
+	app.config["JSON_SORT_KEYS"] = False
 	http_server = WSGIServer(('0.0.0.0', 80), DebuggedApplication(app))
 	http_server.serve_forever()
 
