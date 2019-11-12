@@ -12,7 +12,7 @@ import requests
 from functools import wraps
 import os
 import hashlib
-from db import get_session, user_exists, add_user, get_token, find_token, check_user
+from db import get_session, user_exists, add_user, get_token, find_token, check_user, revoke_token
 import json
 import base64
 
@@ -37,7 +37,7 @@ def verify_token(f):
 
 @app.route("/")
 def index():
-	return "Hello"
+	return redirect("/login")
 
 @app.route("/listfile")
 @verify_token
@@ -46,11 +46,18 @@ def listfile():
 	found, username = find_token(session, token)
 	lst = os.listdir(app.static_folder+"\\"+username)
 	# return render_template("listfile.html", data = lst, token = token)
-	return jsonify(username = username, list = lst)
+	return jsonify(username = username,token = token, list = lst)
 
 @app.route("/bye")
 def bye():
 	return "bye"
+
+@app.route("/revoke")
+@verify_token
+def revoke():
+	token = request.args.get("token")
+	found, token = revoke_token(session, token)
+	return jsonify(success = found, token = token)
 
 @app.route("/getsavefile")
 @verify_token
@@ -60,8 +67,11 @@ def getSaveFile():
 
 	id = request.args.get("id")
 	if(not id):
-		lst = os.listdir(app.static_folder+"//"+username)
-		id = lst[-1]
+		try:
+			lst = os.listdir(app.static_folder+"//"+username)
+			id = lst[-1]
+		except IndexError:
+			return jsonify(error = "Not Found!")
 
 	filename = username +"//"+id
 	with open(app.static_folder+'//'+filename,"r") as f:
@@ -98,13 +108,27 @@ def parse():
 
 	id = request.args.get("id")
 	if(not id):
-		lst = os.listdir(app.static_folder+"//"+username)
-		id = lst[-1]
+		try:
+			lst = os.listdir(app.static_folder+"//"+username)
+			id = lst[-1]
+		except IndexError:
+			return jsonify(error = "Not Found!")
 	filename = username +"//"+id
 	savefile = {}
 	savefile["Money"] = 0
 	savefile["TargetHP"] = 0
-	savefile["tower"] = []
+	savefile["Tick"] = 0
+	savefile["NormalTower"] = []
+	savefile["MachineGunTower"] = []
+	savefile["SniperTower"] = []
+	savefile["NormalEnemy"] = []
+	savefile["BossEnemy"] = []
+	savefile["TankerEnemy"] = []
+	savefile["SmallerEnemy"] = []
+	savefile["NormalSpawner"] = []
+	savefile["SmallerSpawner"] = []
+	savefile["BossSpawner"] = []
+	savefile["TankerSpawner"] = []
 	with open(app.static_folder+'//'+filename,"r") as f:
 		decoded_file = base64.b64decode(f.readline().encode())
 		file = decoded_file.decode().split("\n")
@@ -113,13 +137,11 @@ def parse():
 			line = file[i]
 			data = line.split(" ")
 			index = data[0]
-			if(index == "Money" or index == "TargetHP"):
+			if(index == "Money" or index == "TargetHP" or index == "Tick"):
 				value = int(data[1])
 				savefile[index] = value
 			else:
-				x = float(data[1])
-				y = float(data[2])
-				savefile["tower"].append((index, x, y))
+				savefile[index].append(data[1:])
 	return jsonify(savefile)
 
 

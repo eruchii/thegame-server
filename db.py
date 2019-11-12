@@ -1,6 +1,6 @@
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import create_engine
-
+from os import urandom
 from models import User, Base
 import hashlib
 
@@ -8,10 +8,28 @@ def encrypt_string(hash_string):
 	sha_signature = hashlib.sha256(hash_string.encode()).hexdigest()
 	return sha_signature
 
+def genrate_random_string(length):
+    return urandom(length//2).hex()
 
 def init_db():
 	engine = create_engine('sqlite:///thegame.db')
 	Base.metadata.create_all(engine)
+
+def revoke_token(session, token):
+	user = session.query(User).filter_by(token=token).first()
+
+	if not user:
+		return (False, 'Token does not exist')
+
+	if token == user.token:
+		new_token  = encrypt_string(user.username+encrypt_string(user.password)+genrate_random_string(16))
+		session.query(User).filter_by(token=token).update({"token" : new_token}, synchronize_session=False)
+		session.commit()
+		return (True, new_token)
+	else:
+		return (False, 'Token does not exist')
+
+
 
 def add_user(session, username, password, check_password):
 	user = session.query(User).filter_by(username=username).first()
@@ -25,7 +43,7 @@ def add_user(session, username, password, check_password):
 		return (False, 'Passwords do not match')
 
 	hashed = encrypt_string(password)
-	token = encrypt_string(username+hashed)
+	token = encrypt_string(username+hashed+genrate_random_string(16))
 	new_user = User(username=username,
 					password=hashed,
 					token=token)
